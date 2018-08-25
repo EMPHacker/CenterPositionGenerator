@@ -25,7 +25,7 @@ namespace PositionGenerator
 
             int[] object_new_coords = { avail_global_center[0] - object_center[0], avail_global_center[1] - object_center[1] };
             return object_new_coords;
-            
+
         }
         private int GetDigit(TextBox box)
         {
@@ -67,11 +67,42 @@ namespace PositionGenerator
             PositionElement ElemObject = new PositionElement(GetDigit(object_entry_width), GetDigit(object_entry_height), GetDigit(object_entry_left), GetDigit(object_entry_top));
             PositionElement ElemEnclosing = new PositionElement(GetDigit(avail_entry_width), GetDigit(avail_entry_height), GetDigit(avail_entry_left), GetDigit(avail_entry_top));
 
-            Coordinate newCoords = ElemEnclosing - ElemObject;
-            OutputBox.Text = "New Left Coord: " + newCoords.X + Environment.NewLine + "New Top Coord: " + newCoords.Y + Environment.NewLine; ;
-        }
+            GenType typeSwitch = GetSelectedRadioBtn(CoordButtonContainer);
 
+            Coordinate newCoords = null;
+            switch (typeSwitch)
+            {
+                case GenType.center:
+                {
+                    newCoords = ElemEnclosing - ElemObject;
+                    break;
+                }
+            }
+            
+            OutputBox.Text = "New Top Coord: " + newCoords.Y + Environment.NewLine + "New Left Coord: " + newCoords.X + Environment.NewLine;
+        }
         
+        enum GenType { center };
+
+        private GenType GetSelectedRadioBtn(Panel pnl)
+        {
+            foreach (RadioButton rb in pnl.Children)
+            {
+                if (rb.IsChecked == true)
+                {
+                    return CompareToEnum(rb.Name);
+                }
+            }
+            return 0;
+        }
+        private GenType CompareToEnum(string name)
+        {
+            foreach (GenType gentype in Enum.GetValues(typeof(GenType)))
+            {
+                if (name == gentype.ToString()) return gentype;
+            }
+            return 0;
+        }
         private void Tb_GotFocus(object sender, RoutedEventArgs e)
         {
             if (sender is TextBox tb)
@@ -80,7 +111,7 @@ namespace PositionGenerator
             }
         }
     }
-
+    
     public class Coordinate
     {
         public int X { get; set; }
@@ -88,8 +119,8 @@ namespace PositionGenerator
 
         public Coordinate(int x, int y)
         {
-            int X = x;
-            int Y = y;
+            X = x;
+            Y = y;
         }
     }
 
@@ -150,11 +181,11 @@ namespace PositionGenerator
         
         public static Coordinate operator -(PositionElement element, PositionElement containtingelement)
         {
-            return new Coordinate(containtingelement.GlobalCenterCoords.X - element.GlobalCenterCoords.X, containtingelement.GlobalCenterCoords.Y - element.GlobalCenterCoords.Y);
+            return new Coordinate(Math.Abs(containtingelement.GlobalCenterCoords.X - element.GlobalCenterCoords.X), Math.Abs(containtingelement.GlobalCenterCoords.Y - element.GlobalCenterCoords.Y));
         }
         public static Coordinate operator +(PositionElement element, PositionElement containtingelement)
         {
-            return new Coordinate(containtingelement.GlobalCenterCoords.X + element.GlobalCenterCoords.X, containtingelement.GlobalCenterCoords.Y + element.GlobalCenterCoords.Y);
+            return new Coordinate(Math.Abs(containtingelement.GlobalCenterCoords.X + element.GlobalCenterCoords.X), Math.Abs(containtingelement.GlobalCenterCoords.Y + element.GlobalCenterCoords.Y));
         }
     }
 }
