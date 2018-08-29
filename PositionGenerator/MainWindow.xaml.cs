@@ -13,20 +13,11 @@ namespace PositionGenerator
         {
             InitializeComponent();
         }
-
-        private int[] Generate_Coords()
+        private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            //x,y
-            int[] avail_center = { Convert.ToInt32(avail_entry_width.Text) / 2, Convert.ToInt32(avail_entry_height.Text) / 2 };
-            int[] avail_global_center = { (Convert.ToInt32(avail_entry_width.Text) / 2) + Convert.ToInt32(avail_entry_left.Text), (Convert.ToInt32(avail_entry_height.Text) / 2) + Convert.ToInt32(avail_entry_top.Text) };
-
-            int[] object_center = { Convert.ToInt32(object_entry_width.Text) / 2, Convert.ToInt32(object_entry_height.Text) / 2 };
-            int[] object_global_center = { (Convert.ToInt32(object_entry_width.Text) / 2) + Convert.ToInt32(object_entry_left.Text), (Convert.ToInt32(object_entry_height.Text) / 2) + Convert.ToInt32(object_entry_top.Text) };
-
-            int[] object_new_coords = { avail_global_center[0] - object_center[0], avail_global_center[1] - object_center[1] };
-            return object_new_coords;
-
+            center.IsChecked = true;
         }
+
         private int GetDigit(TextBox box)
         {
             int input = 0;
@@ -67,42 +58,82 @@ namespace PositionGenerator
             PositionElement ElemObject = new PositionElement(GetDigit(object_entry_width), GetDigit(object_entry_height), GetDigit(object_entry_left), GetDigit(object_entry_top));
             PositionElement ElemEnclosing = new PositionElement(GetDigit(avail_entry_width), GetDigit(avail_entry_height), GetDigit(avail_entry_left), GetDigit(avail_entry_top));
 
-            GenType typeSwitch = GetSelectedRadioBtn(CoordButtonContainer);
+            GenType typeSwitch = GetGenTypeRadioBtn(CoordButtonContainer);
 
-            Coordinate newCoords = null;
             switch (typeSwitch)
             {
                 case GenType.center:
-                {
-                    newCoords = ElemEnclosing - ElemObject;
-                    break;
-                }
-            }
-            
-            OutputBox.Text = "New Top Coord: " + newCoords.Y + Environment.NewLine + "New Left Coord: " + newCoords.X + Environment.NewLine;
-        }
-        
-        enum GenType { center };
+                    {
+                        Coordinate newCoords = ElemEnclosing - ElemObject;
+                        OutputBox.Text = "New Top Coord: " + newCoords.Y + Environment.NewLine + "New Left Coord: " + newCoords.X + Environment.NewLine;
+                        break;
+                    }
+                case GenType.offset:
+                    {
+                        long offset = 0;
+                        Position position = GetPositionRadioBtn(SideButtonContainer);
+                        switch (position)
+                        {
+                            case Position.bottom:
+                                {
+                                    offset = Math.Abs((ElemEnclosing.Coords.Y + ElemEnclosing.Height) - (ElemObject.Coords.Y + ElemObject.Height));
+                                    break;
+                                }
+                            case Position.top:
+                                {
+                                    offset = Math.Abs(ElemEnclosing.Coords.Y - ElemObject.Coords.Y);
+                                    break;
+                                }
+                            case Position.left:
+                                {
+                                    offset = Math.Abs(ElemEnclosing.Coords.X - ElemObject.Coords.X);
+                                    break;
+                                }
+                            case Position.right:
+                                {
+                                    offset = Math.Abs((ElemEnclosing.Coords.X + ElemEnclosing.Width) - (ElemObject.Coords.X + ElemObject.Width));
+                                    break;
+                                }
 
-        private GenType GetSelectedRadioBtn(Panel pnl)
+                        }
+                        OutputBox.Text = position.ToString() + " offset: " + offset.ToString();
+                        break;
+                    }
+            }
+        }
+
+        enum GenType { center, offset };
+        enum Position { top, bottom, left, right };
+
+        private GenType GetGenTypeRadioBtn(Panel pnl)
         {
             foreach (RadioButton rb in pnl.Children)
             {
                 if (rb.IsChecked == true)
                 {
-                    return CompareToEnum(rb.Name);
+                    foreach (GenType enumvar in Enum.GetValues(typeof(GenType)))
+                    {
+                        if (rb.Name == enumvar.ToString()) return enumvar;
+                    }
                 }
             }
             return 0;
         }
-        private GenType CompareToEnum(string name)
+        private Position GetPositionRadioBtn(Panel pnl)
         {
-            foreach (GenType gentype in Enum.GetValues(typeof(GenType)))
+            foreach (RadioButton rb in pnl.Children)
             {
-                if (name == gentype.ToString()) return gentype;
+                if (rb.IsChecked == true)
+                {
+                    foreach (Position enumvar in Enum.GetValues(typeof(Position)))
+                    {
+                        if (rb.Name == enumvar.ToString()) return enumvar;
+                    }
+                }
             }
             return 0;
         }
+
         private void Tb_GotFocus(object sender, RoutedEventArgs e)
         {
             if (sender is TextBox tb)
@@ -110,8 +141,23 @@ namespace PositionGenerator
                 tb.SelectAll(); //select all text in TextBox
             }
         }
+
+        private void GenTypeOffset_Checked(object sender, RoutedEventArgs e)
+        {
+            TextBox_EnclElemDim.Visibility = Visibility.Hidden;
+            Panel_RefSideSelector.Visibility = Visibility.Visible;
+            TextBox_RefElemPos.Visibility = Visibility.Visible;
+
+        }
+
+        private void GenTypeCenter_Checked(object sender, RoutedEventArgs e)
+        {
+            TextBox_EnclElemDim.Visibility = Visibility.Visible;
+            Panel_RefSideSelector.Visibility = Visibility.Hidden;
+            TextBox_RefElemPos.Visibility = Visibility.Hidden;
+        }
     }
-    
+
     public class Coordinate
     {
         public int X { get; set; }
@@ -121,71 +167,6 @@ namespace PositionGenerator
         {
             X = x;
             Y = y;
-        }
-    }
-
-    public class PositionElement
-    {
-        private int Width { get; }
-        private int Height { get; }
-        private Coordinate Coords { get; set; }
-        private Coordinate CenterCoords { get; set; }
-        private Coordinate GlobalCenterCoords { get; set; }
-
-        public PositionElement(int width, int height, int x, int y)
-        {
-            Width = width;
-            Height = height;
-            Coords = new Coordinate(x, y);
-
-            CenterCoords = GenerateCenterCoords();
-            GlobalCenterCoords = GenerateCenterCoordsWRTCanvas();
-        }
-
-        private Coordinate GenerateCenterCoords()
-        {
-            int xcentercoord;
-            if ((this.Width % 2) == 1)
-            {
-                xcentercoord = (this.Width / 2);
-            }
-            else
-            {
-                xcentercoord = Convert.ToInt32(((double)this.Width) / 2);
-            }
-            int ycentercoord;
-            if ((this.Height % 2) == 1)
-            {
-                ycentercoord = (this.Height / 2);
-            }
-            else
-            {
-                ycentercoord = Convert.ToInt32(((double)this.Height) / 2);
-            }
-
-            //CenterCoords = new Coordinate(xcentercoord, ycentercoord);
-            return new Coordinate(xcentercoord, ycentercoord);
-        }
-
-        public Coordinate GenerateCenterCoordsWRTCanvas()
-        {
-            return new Coordinate(CenterCoords.X + Coords.X, CenterCoords.Y + Coords.Y);
-            /*
-            if ((this.Coords.X != 0) || (this.Coords.Y != 0))
-            {
-                return new Coordinate(CenterCoords.X + Coords.X, CenterCoords.Y + Coords.Y);
-            }
-            return null;*/
-        }
-        
-        
-        public static Coordinate operator -(PositionElement element, PositionElement containtingelement)
-        {
-            return new Coordinate(Math.Abs(containtingelement.GlobalCenterCoords.X - element.GlobalCenterCoords.X), Math.Abs(containtingelement.GlobalCenterCoords.Y - element.GlobalCenterCoords.Y));
-        }
-        public static Coordinate operator +(PositionElement element, PositionElement containtingelement)
-        {
-            return new Coordinate(Math.Abs(containtingelement.GlobalCenterCoords.X + element.GlobalCenterCoords.X), Math.Abs(containtingelement.GlobalCenterCoords.Y + element.GlobalCenterCoords.Y));
         }
     }
 }
